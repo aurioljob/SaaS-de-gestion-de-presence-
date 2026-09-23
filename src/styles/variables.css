@@ -1,0 +1,69 @@
+:root {
+  --pf-blue-900: #0a1a3a;
+  --pf-blue-800: #122a5c;
+  --pf-blue-700: #1e3a8a;
+  --pf-blue-600: #2563eb;
+  --pf-blue-500: #3b82f6;
+  --pf-blue-400: #60a5fa;
+  --pf-violet-600: #7c3aed;
+  --pf-violet-500: #8b5cf6;
+  --pf-violet-400: #a78bfa;
+  --pf-gradient: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  --pf-gradient-soft: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  --pf-bg: #f7f8fc;
+  --pf-surface: #ffffff;
+  --pf-border: #e5e7eb;
+  --pf-text: #0a1a3a;
+  --pf-text-muted: #6b7280;
+  --pf-success: #10b981;
+  --pf-warning: #f59e0b;
+  --pf-danger: #ef4444;
+  --pf-info: #3b82f6;
+  --pf-radius-sm: 6px;
+  --pf-radius: 10px;
+  --pf-radius-lg: 16px;
+  --pf-shadow-sm: 0 1px 2px rgba(10, 26, 58, 0.06);
+  --pf-shadow: 0 4px 12px rgba(10, 26, 58, 0.08);
+  --pf-shadow-lg: 0 12px 32px rgba(10, 26, 58, 0.12);
+  --pf-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --pf-font-display: 'Poppins', var(--pf-font);
+  --pf-sidebar-width: 260px;
+  --pf-topbar-height: 64px;
+}
+
+/* ============ DARK MODE ============ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pf-bg: #0a1220;
+    --pf-surface: #111a2e;
+    --pf-border: #1e2a44;
+    --pf-text: #f1f5fb;
+    --pf-text-muted: #8b98b3;
+    --pf-text-light: #5a6785;
+    --pf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --pf-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --pf-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  body { background: var(--pf-bg); color: var(--pf-text); }
+
+  .sidebar { background: #060c1a; }
+  .topbar { background: var(--pf-surface); }
+  .card { background: var(--pf-surface); }
+  .table th { background: #0d1526; }
+  .table tr:hover td { background: rgba(59, 130, 246, 0.06); }
+
+  .badge-success { background: #064e3b; color: #6ee7b7; }
+  .badge-warning { background: #78350f; color: #fcd34d; }
+  .badge-danger { background: #7f1d1d; color: #fca5a5; }
+  .badge-info { background: #1e3a8a; color: #93c5fd; }
+  .badge-muted { background: #1f2937; color: #9ca3af; }
+
+  .emp-status-card { background: var(--pf-surface); }
+  .emp-history { background: var(--pf-surface); }
+  .emp-nav { background: var(--pf-surface); }
+  .install-widget { background: var(--pf-surface); }
+
+  input, select, textarea, .input, .select { background: var(--pf-surface); color: var(--pf-text); }
+  input::placeholder { color: var(--pf-text-light); }
+}
