@@ -1,31 +1,33 @@
 import { supabase } from '../../config/supabase.js';
-import {  checkPlanLimit } from '../../utils/company.js';
+import { checkPlanLimit } from '../../utils/company.js';
 import { requireCompany as guardCompany } from '../../utils/guards.js';
 import { renderSidebar } from '../../components/sidebar.js';
 import { renderTopbar, attachTopbarEvents } from '../../components/topbar.js';
 import { openModal, confirmModal } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
-import { formatDate, debounce } from '../../utils/format.js';
+import { debounce } from '../../utils/format.js';
 
-let state = { search: '', status: '', siteId: '' };
+const initialState = { search: '', status: '', siteId: '' };
+let state = { ...initialState };
 
 export async function companyEmployeesPage(app) {
   const ctx = await guardCompany();
   if (!ctx) return;
   const { profile, context } = ctx;
+  state = { ...initialState };
 
   app.innerHTML = `
     <div class="app-layout">
       ${renderSidebar('/employees', 'company', {
-  companyName: context.company.name,
-  planName: context.plan?.name || 'Aucun plan',
-  isImpersonating: context.isImpersonating,
-})}
+        companyName: context.company.name,
+        planName: context.plan?.name || 'Aucun plan',
+        isImpersonating: context.isImpersonating,
+      })}
       <div class="main-content">
-        ${renderTopbar(profile, 'Employés',{
-  isImpersonating: context.isImpersonating,
-  companyName: context.company.name,
-})}
+        ${renderTopbar(profile, 'Employés', {
+          isImpersonating: context.isImpersonating,
+          companyName: context.company.name,
+        })}
         <main class="page">
           <div class="page-header">
             <h1>Employés</h1>
@@ -75,6 +77,7 @@ export async function companyEmployeesPage(app) {
 
 async function loadEmployees(context) {
   const list = document.getElementById('employees-list');
+  if (!list) return;
   list.innerHTML = `<div class="loading"><div class="spinner"></div>Chargement…</div>`;
 
   let query = supabase.from('employees')
@@ -113,7 +116,10 @@ async function loadEmployees(context) {
               <td>${e.position || '—'}</td>
               <td>${e.departments?.name || '—'}</td>
               <td>${e.sites?.name || '—'}</td>
-              <td>${badge(e.status)}</td>
+              <td>
+                ${badge(e.status)}
+                ${!e.user_id ? '<br><small style="color:#92400e;font-size:11px;margin-top:4px;display:inline-block;">⏳ Compte non activé</small>' : '<br><small style="color:#065f46;font-size:11px;margin-top:4px;display:inline-block;">✓ Compte actif</small>'}
+              </td>
               <td>
                 <div class="table-actions">
                   <button class="icon-btn" data-edit="${e.id}">✎</button>
@@ -177,8 +183,8 @@ async function openEmployeeForm(emp, context) {
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="label">Email</label>
-          <input class="input" type="email" id="e-email" value="${e.email || ''}" />
+          <label class="label">Email ${isEdit ? '' : "* (pour l'invitation)"}</label>
+          <input class="input" type="email" id="e-email" value="${e.email || ''}" ${isEdit ? '' : 'required'} />
         </div>
         <div class="form-group">
           <label class="label">Téléphone</label>
@@ -225,16 +231,32 @@ async function openEmployeeForm(emp, context) {
           </select>
         </div>
       </div>
+
+      ${!isEdit ? `
+        <div style="background:#dbeafe;border-radius:10px;padding:14px;margin-top:16px;font-size:13px;color:#1e40af;">
+          📧 <strong>Un lien d'invitation sera envoyé à l'employé.</strong><br>
+          Il devra cliquer dessus pour créer son mot de passe et activer son compte.
+        </div>
+      ` : ''}
+
+      ${isEdit && e.user_id ? `
+        <div style="background:#d1fae5;border-radius:10px;padding:14px;margin-top:16px;font-size:13px;color:#065f46;">
+          ✅ <strong>Compte activé.</strong> Cet employé peut déjà se connecter.
+        </div>
+      ` : isEdit ? `
+        <div style="background:#fef3c7;border-radius:10px;padding:14px;margin-top:16px;font-size:13px;color:#92400e;">
+          ⚠️ <strong>Compte non activé.</strong> L'employé n'a pas encore créé son mot de passe.
+        </div>
+      ` : ''}
     `,
     footer: `
       <button class="btn btn-secondary" data-cancel>Annuler</button>
-      <button class="btn btn-primary" data-save>${isEdit ? 'Enregistrer' : 'Ajouter'}</button>
+      <button class="btn btn-primary" data-save>${isEdit ? 'Enregistrer' : 'Créer et inviter'}</button>
     `,
   });
 
   document.querySelector('[data-cancel]').addEventListener('click', close);
   document.querySelector('[data-save]').addEventListener('click', async () => {
-    // Vérification de la limite pour les nouveaux
     if (!isEdit) {
       const limit = await checkPlanLimit('employees');
       if (!limit.allowed) {
@@ -243,11 +265,14 @@ async function openEmployeeForm(emp, context) {
       }
     }
 
+    const email = document.getElementById('e-email').value.trim().toLowerCase();
+    if (!isEdit && !email) { toast('Email requis pour l\'invitation', 'error'); return; }
+
     const payload = {
       company_id: context.companyId,
       first_name: document.getElementById('e-first').value.trim(),
       last_name: document.getElementById('e-last').value.trim(),
-      email: document.getElementById('e-email').value.trim() || null,
+      email: email || null,
       phone: document.getElementById('e-phone').value.trim() || null,
       employee_number: document.getElementById('e-num').value.trim() || null,
       position: document.getElementById('e-pos').value.trim() || null,
@@ -259,13 +284,95 @@ async function openEmployeeForm(emp, context) {
 
     if (!payload.first_name || !payload.last_name) { toast('Prénom et nom requis', 'error'); return; }
 
+    // Création ou modification de la fiche employé
     let error;
-    if (isEdit) ({ error } = await supabase.from('employees').update(payload).eq('id', e.id));
-    else ({ error } = await supabase.from('employees').insert(payload));
+
+    if (isEdit) {
+      ({ error } = await supabase.from('employees').update(payload).eq('id', emp.id));
+    } else {
+      const { error: err } = await supabase.from('employees').insert(payload);
+      error = err;
+    }
 
     if (error) { toast(error.message, 'error'); return; }
-    toast(isEdit ? 'Employé modifié' : 'Employé ajouté', 'success');
+
+    // Création de l'invitation (uniquement pour les nouveaux)
+    if (!isEdit) {
+      const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+      const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString(); // 7 jours
+
+      const { error: invError } = await supabase.from('invitations').insert({
+        company_id: context.companyId,
+        email,
+        role: 'employee',
+        token,
+        expires_at: expiresAt,
+        status: 'pending',
+      });
+
+      if (invError) {
+        toast('Employé créé mais invitation échouée : ' + invError.message, 'error');
+        close();
+        loadEmployees(context);
+        return;
+      }
+
+      // Générer le lien d'invitation
+      const inviteUrl = `${window.location.origin}/accept-invite?token=${token}`;
+      
+      // Afficher la modale de succès avec le lien
+      close();
+      showInviteLink(inviteUrl, email, payload.first_name, payload.last_name);
+      loadEmployees(context);
+      return;
+    }
+
+    toast('Employé modifié', 'success');
     close();
     loadEmployees(context);
   });
+}
+
+function showInviteLink(inviteUrl, email, firstName, lastName) {
+  const { close } = openModal({
+    title: '✅ Invitation créée',
+    body: `
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:3rem;margin-bottom:12px;">📧</div>
+        <p style="color:var(--pf-text-muted);font-size:14px;">
+          Un lien d'invitation a été généré pour <strong>${firstName} ${lastName}</strong>.
+        </p>
+      </div>
+
+      <div style="background:#f3f4f6;border-radius:10px;padding:16px;margin-bottom:16px;">
+        <div style="font-size:11px;color:var(--pf-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">
+          Lien d'invitation
+        </div>
+        <div style="font-family:monospace;font-size:12px;word-break:break-all;color:var(--pf-text);">
+          ${inviteUrl}
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="copy-link" style="width:100%;margin-bottom:10px;">
+        📋 Copier le lien
+      </button>
+
+      <p style="font-size:12px;color:var(--pf-text-muted);text-align:center;">
+        Envoyez ce lien à <strong>${email}</strong>.<br>
+        Il est valide 7 jours. L'employé créera son mot de passe via ce lien.
+      </p>
+    `,
+    footer: `<button class="btn btn-secondary" data-close-modal>Fermer</button>`,
+  });
+
+  document.getElementById('copy-link').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      toast('Lien copié !', 'success');
+    } catch {
+      toast('Copie impossible, copiez manuellement', 'error');
+    }
+  });
+
+  document.querySelector('[data-close-modal]').addEventListener('click', close);
 }

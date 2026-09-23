@@ -5,6 +5,7 @@ import { landingPage } from './pages/public/landing.js';
 import { registerPage } from './pages/public/register.js';
 import { pricingPage } from './pages/public/pricing.js';
 import { companyOnboardingPage } from './pages/company/onboarding.js';
+import { acceptInvitePage } from './pages/public/accept-invite.js';
 
 // Admin
 import { adminDashboardPage } from './pages/admin/dashboard.js';
@@ -41,6 +42,7 @@ register('/login', loginPage);
 register('/register', registerPage);
 register('/pricing', pricingPage);
 register('/onboarding', companyOnboardingPage);
+register('/accept-invite', acceptInvitePage);
 
 // Admin
 register('/admin', adminDashboardPage);
