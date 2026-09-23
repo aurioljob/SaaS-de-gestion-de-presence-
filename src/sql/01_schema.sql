@@ -126,6 +126,7 @@ create table public.attendance_events (
 create table public.invitations (
   id uuid primary key default uuid_generate_v4(),
   company_id uuid not null references public.companies(id) on delete cascade,
+  employee_id uuid references public.employees(id) on delete cascade,
   email text not null,
   role user_role not null default 'employee',
   token text not null unique,

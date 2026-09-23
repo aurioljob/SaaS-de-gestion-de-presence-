@@ -46,7 +46,7 @@ export async function acceptInvitePage(app) {
         </div>
 
         <div style="background:#dbeafe;border-radius:10px;padding:14px;margin-bottom:24px;font-size:13px;color:#1e40af;">
-          👋 Vous avez été invité(e) à rejoindre <strong>${invitation.companies?.name}</strong> en tant qu'employé(e).<br>
+           Vous avez été invité(e) à rejoindre <strong>${invitation.companies?.name}</strong> en tant qu'employé(e).<br>
           Créez votre mot de passe pour activer votre compte.
         </div>
 

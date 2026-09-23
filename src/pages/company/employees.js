@@ -106,7 +106,7 @@ async function loadEmployees(context) {
     <div class="table-wrapper">
       <table class="table">
         <thead>
-          <tr><th>Nom</th><th>Email</th><th>Poste</th><th>Département</th><th>Site</th><th>Statut</th><th></th></tr>
+          <tr><th>Nom</th><th>Email</th><th>Poste</th><th>Département</th><th>Site</th><th>Statut</th><th>Compte</th><th></th></tr>
         </thead>
         <tbody>
           ${data.map(e => `
@@ -118,11 +118,12 @@ async function loadEmployees(context) {
               <td>${e.sites?.name || '—'}</td>
               <td>
                 ${badge(e.status)}
-                ${!e.user_id ? '<br><small style="color:#92400e;font-size:11px;margin-top:4px;display:inline-block;">⏳ Compte non activé</small>' : '<br><small style="color:#065f46;font-size:11px;margin-top:4px;display:inline-block;">✓ Compte actif</small>'}
               </td>
+              <td>${renderAccountBadge(e)}</td>
               <td>
                 <div class="table-actions">
                   <button class="icon-btn" data-edit="${e.id}">✎</button>
+                  <button class="icon-btn" data-invite="${e.id}" title="Gérer l'invitation">✉️</button>
                   <button class="icon-btn danger" data-del="${e.id}">🗑</button>
                 </div>
               </td>
@@ -136,6 +137,9 @@ async function loadEmployees(context) {
   list.querySelectorAll('[data-edit]').forEach(b =>
     b.addEventListener('click', () => openEmployeeForm(data.find(x => x.id === b.dataset.edit), context))
   );
+  list.querySelectorAll('[data-invite]').forEach(b =>
+    b.addEventListener('click', () => openInviteManager(b.dataset.invite, data, context))
+);
   list.querySelectorAll('[data-del]').forEach(b =>
     b.addEventListener('click', () => {
       const e = data.find(x => x.id === b.dataset.del);
@@ -157,6 +161,18 @@ function badge(status) {
     terminated: '<span class="badge badge-danger">Terminé</span>',
   };
   return map[status] || `<span class="badge badge-muted">${status}</span>`;
+}
+function renderAccountBadge(emp) {
+  if (emp.user_id) {
+    return `<span style="font-size:11px;color:#065f46;display:inline-flex;align-items:center;gap:4px;margin-top:4px;">
+      <span style="width:6px;height:6px;background:#10b981;border-radius:50%;"></span>
+      Compte actif
+    </span>`;
+  }
+  return `<button class="btn-invite-status" data-invite="${emp.id}" style="background:#fef3c7;color:#92400e;font-size:11px;padding:4px 10px;border-radius:999px;font-weight:600;margin-top:4px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;border:none;font-family:inherit;">
+    <span style="width:6px;height:6px;background:#f59e0b;border-radius:50%;"></span>
+    Invitation en attente
+  </button>`;
 }
 
 async function openEmployeeForm(emp, context) {
@@ -234,7 +250,7 @@ async function openEmployeeForm(emp, context) {
 
       ${!isEdit ? `
         <div style="background:#dbeafe;border-radius:10px;padding:14px;margin-top:16px;font-size:13px;color:#1e40af;">
-          📧 <strong>Un lien d'invitation sera envoyé à l'employé.</strong><br>
+          <strong>Un lien d'invitation sera envoyé à l'employé.</strong><br>
           Il devra cliquer dessus pour créer son mot de passe et activer son compte.
         </div>
       ` : ''}
@@ -285,13 +301,19 @@ async function openEmployeeForm(emp, context) {
     if (!payload.first_name || !payload.last_name) { toast('Prénom et nom requis', 'error'); return; }
 
     // Création ou modification de la fiche employé
+    let employeeId = emp?.id;
     let error;
 
     if (isEdit) {
       ({ error } = await supabase.from('employees').update(payload).eq('id', emp.id));
     } else {
-      const { error: err } = await supabase.from('employees').insert(payload);
+      const { data: created, error: err } = await supabase
+        .from('employees')
+        .insert(payload)
+        .select('id')
+        .single();
       error = err;
+      if (created) employeeId = created.id;
     }
 
     if (error) { toast(error.message, 'error'); return; }
@@ -303,6 +325,7 @@ async function openEmployeeForm(emp, context) {
 
       const { error: invError } = await supabase.from('invitations').insert({
         company_id: context.companyId,
+        employee_id: employeeId,
         email,
         role: 'employee',
         token,
@@ -372,6 +395,125 @@ function showInviteLink(inviteUrl, email, firstName, lastName) {
     } catch {
       toast('Copie impossible, copiez manuellement', 'error');
     }
+  });
+
+  document.querySelector('[data-close-modal]').addEventListener('click', close);
+}
+
+async function openInviteManager(employeeId, employeesList, context) {
+  const emp = employeesList.find(e => e.id === employeeId);
+  if (!emp) return;
+
+  // Charge l'invitation en cours
+  const { data: invitation } = await supabase
+    .from('invitations')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const baseUrl = window.location.origin;
+  const hasValidInvite = invitation && new Date(invitation.expires_at) > new Date();
+  const inviteUrl = hasValidInvite ? `${baseUrl}/accept-invite?token=${invitation.token}` : null;
+
+  const { close } = openModal({
+    title: `Invitation — ${emp.first_name} ${emp.last_name}`,
+    body: `
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--pf-gradient);color:white;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;font-family:var(--pf-font-display);margin:0 auto 12px;">
+          ${emp.first_name[0]}${emp.last_name[0]}
+        </div>
+        <div style="font-weight:600;">${emp.email || "Pas d'email"}</div>
+      </div>
+
+      ${hasValidInvite ? `
+        <div style="background:#d1fae5;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:#065f46;">
+          ✅ <strong>Invitation active</strong><br>
+          Expire le ${new Date(invitation.expires_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
+        </div>
+
+        <div style="background:#f3f4f6;border-radius:10px;padding:16px;margin-bottom:16px;">
+          <div style="font-size:11px;color:var(--pf-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">
+            Lien d'invitation
+          </div>
+          <div style="font-family:monospace;font-size:12px;word-break:break-all;color:var(--pf-text);">
+            ${inviteUrl}
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="copy-invite" style="width:100%;margin-bottom:10px;">
+          📋 Copier le lien
+        </button>
+
+        <button class="btn btn-secondary" id="share-invite" style="width:100%;margin-bottom:10px;">
+          📤 Partager via WhatsApp / Email
+        </button>
+      ` : `
+        <div style="background:#fef3c7;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:#92400e;">
+          ⚠️ <strong>Aucune invitation active</strong><br>
+          ${invitation ? 'La précédente invitation a expiré.' : "Aucune invitation n'a encore été générée."}
+        </div>
+      `}
+
+      <button class="btn ${hasValidInvite ? 'btn-secondary' : 'btn-primary'}" id="regen-invite" style="width:100%;">
+        ${hasValidInvite ? '🔄 Régénérer un nouveau lien' : '✉️ Générer une invitation'}
+      </button>
+
+      <p style="font-size:12px;color:var(--pf-text-muted);text-align:center;margin-top:16px;">
+        Le lien expire après 7 jours. Régénérez-le si l'employé l'a perdu.
+      </p>
+    `,
+    footer: `<button class="btn btn-secondary" data-close-modal>Fermer</button>`,
+  });
+
+  // Copy
+  if (hasValidInvite) {
+    document.getElementById('copy-invite').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+        toast('Lien copié !', 'success');
+      } catch {
+        toast('Copie impossible', 'error');
+      }
+    });
+
+    document.getElementById('share-invite').addEventListener('click', () => {
+      const msg = `Bonjour ${emp.first_name}, voici votre lien pour activer votre compte Pointify : ${inviteUrl}`;
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+      const mailUrl = `mailto:${emp.email}?subject=Invitation%20Pointify&body=${encodeURIComponent(msg)}`;
+
+      // Affiche un mini menu
+      const choice = confirm(
+        'Partager via :\n\nOK = WhatsApp\nAnnuler = Email'
+      );
+      window.open(choice ? whatsappUrl : mailUrl, '_blank');
+    });
+  }
+
+  // Régénération
+  document.getElementById('regen-invite').addEventListener('click', async () => {
+    const btn = document.getElementById('regen-invite');
+    btn.disabled = true;
+    btn.textContent = 'Génération…';
+
+    const { data, error } = await supabase.rpc('regenerate_invitation', {
+      p_employee_id: employeeId,
+    });
+
+    if (error || !data?.success) {
+      toast(data?.error || error?.message || 'Erreur', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Régénérer';
+      return;
+    }
+
+    toast('Nouveau lien généré !', 'success');
+    close();
+
+    // Réouvre la modale avec le nouveau lien
+    setTimeout(() => openInviteManager(employeeId, employeesList, context), 300);
   });
 
   document.querySelector('[data-close-modal]').addEventListener('click', close);
