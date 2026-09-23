@@ -12,12 +12,13 @@ export async function acceptInvitePage(app) {
     return;
   }
 
-  // Charge l'invitation
-  const { data: invitation, error } = await supabase
-    .from('invitations')
-    .select('*, companies(name)')
-    .eq('token', token)
-    .maybeSingle();
+  // Charge l'invitation via RPC pour respecter la RLS avant connexion.
+  const { data: invitationData, error } = await supabase.rpc('get_invitation', {
+    p_token: token,
+  });
+  const invitation = invitationData && Object.keys(invitationData).length > 0
+    ? invitationData
+    : null;
 
   if (error || !invitation) {
     renderError(app, 'Invitation introuvable', 'Ce lien est invalide.');
@@ -42,11 +43,11 @@ export async function acceptInvitePage(app) {
       <div class="auth-card" style="max-width:460px;">
         <div class="auth-logo">
           <h1>Pointify</h1>
-          <p>Rejoignez <strong>${invitation.companies?.name || 'votre entreprise'}</strong></p>
+          <p>Rejoignez <strong>${invitation.company_name || 'votre entreprise'}</strong></p>
         </div>
 
         <div style="background:#dbeafe;border-radius:10px;padding:14px;margin-bottom:24px;font-size:13px;color:#1e40af;">
-           Vous avez été invité(e) à rejoindre <strong>${invitation.companies?.name}</strong> en tant qu'employé(e).<br>
+           Vous avez été invité(e) à rejoindre <strong>${invitation.company_name}</strong> en tant qu'employé(e).<br>
           Créez votre mot de passe pour activer votre compte.
         </div>
 

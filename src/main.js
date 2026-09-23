@@ -6,6 +6,7 @@ import { registerPage } from './pages/public/register.js';
 import { pricingPage } from './pages/public/pricing.js';
 import { companyOnboardingPage } from './pages/company/onboarding.js';
 import { acceptInvitePage } from './pages/public/accept-invite.js';
+import { adminReportsPage } from './pages/admin/reports.js';
 
 // Admin
 import { adminDashboardPage } from './pages/admin/dashboard.js';
@@ -17,6 +18,9 @@ import { adminPaymentsPage } from './pages/admin/payments.js';
 import { adminCouponsPage } from './pages/admin/coupons.js';
 import { adminAuditLogsPage } from './pages/admin/audit-logs.js';
 import { adminSettingsPage } from './pages/admin/settings.js';
+import { adminUsersPage } from './pages/admin/users.js';
+import { adminEmployeesPage } from './pages/admin/employees.js';
+import { adminNotificationsPage } from './pages/admin/notifications.js';
 
 // Entreprise
 import { companyDashboardPage } from './pages/company/dashboard.js';
@@ -84,9 +88,10 @@ const adminPlaceholder = (title) => async (app) => {
     </div>`;
   attachTopbarEvents();
 };
-register('/admin/users', adminPlaceholder('Utilisateurs'));
-register('/admin/employees', adminPlaceholder('Employés'));
-register('/admin/reports', adminPlaceholder('Rapports'));
+register('/admin/users', adminUsersPage);
+register('/admin/employees', adminEmployeesPage);
+register('/admin/reports', adminReportsPage);
+register('/admin/notifications', adminNotificationsPage);
 
 // Placeholders entreprise
 // const companyPlaceholder = (title) => async (app) => {

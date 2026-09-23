@@ -5,6 +5,9 @@ import { renderTopbar, attachTopbarEvents } from '../../components/topbar.js';
 import { subscribeToAttendance, unsubscribe } from '../../utils/realtime.js';
 import { icon } from '../../components/icons.js';
 import { toast } from '../../components/toast.js';
+import { prepareCompanyLayout } from '../../utils/company-layout.js';
+import { getMyFeatures } from '../../utils/company.js';
+import { proBadge } from '../../components/upgrade.js';
 
 let channel = null;
 
@@ -12,15 +15,12 @@ export async function companyDashboardPage(app) {
   const ctx = await guardCompany();
   if (!ctx) return;
   const { profile, context } = ctx;
+  const features = await getMyFeatures();
   const companyId = context.companyId;
 
   app.innerHTML = `
     <div class="app-layout">
-      ${renderSidebar('/dashboard', 'company', {
-        companyName: context.company.name,
-        planName: context.plan?.name || 'Aucun plan',
-        isImpersonating: context.isImpersonating,
-      })}
+      ${renderSidebar('/dashboard', 'company', await prepareCompanyLayout(context))}
       <div class="main-content">
         ${renderTopbar(profile, 'Tableau de bord', {
           isImpersonating: context.isImpersonating,
@@ -48,15 +48,15 @@ export async function companyDashboardPage(app) {
 
   attachTopbarEvents();
 
-  await loadDashboard(context);
+  await loadDashboard(context, features);
 
   // Realtime
   channel = subscribeToAttendance(companyId, () => {
-    loadDashboard(context, true);
+    loadDashboard(context, features, true);
   });
 }
 
-async function loadDashboard(context, silent = false) {
+async function loadDashboard(context, features = [], silent = false) {
   const companyId = context.companyId;
   const today = new Date().toISOString().slice(0, 10);
   const content = document.getElementById('dashboard-content');
@@ -137,7 +137,15 @@ async function loadDashboard(context, silent = false) {
         <div style="display:flex;flex-direction:column;gap:10px;">
           <a href="/employees" data-link class="btn btn-primary" style="justify-content:flex-start;">${icon('userCheck',16)} Ajouter un employé</a>
           <a href="/sites" data-link class="btn btn-secondary" style="justify-content:flex-start;">${icon('mapPin',16)} Gérer les sites</a>
-          <a href="/qr-codes" data-link class="btn btn-secondary" style="justify-content:flex-start;">${icon('qrCode',16)} Générer un QR</a>
+            ${features.includes('qr_checkin') ? `
+            <a href="/qr-codes" data-link class="btn btn-secondary" style="justify-content:flex-start;">
+                ${icon('qrCode',16)} Générer un QR
+            </a>
+            ` : `
+            <a href="/subscription" data-link class="btn btn-secondary" style="justify-content:flex-start;opacity:0.6;">
+                ${icon('qrCode',16)} QR code ${proBadge('STARTER')}
+            </a>
+            `}
           <a href="/schedules" data-link class="btn btn-secondary" style="justify-content:flex-start;">${icon('clock',16)} Configurer horaires</a>
         </div>
       </div>

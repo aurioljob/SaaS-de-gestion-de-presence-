@@ -4,6 +4,7 @@ import { renderSidebar } from '../../components/sidebar.js';
 import { renderTopbar, attachTopbarEvents } from '../../components/topbar.js';
 import { icon } from '../../components/icons.js';
 import { toast } from '../../components/toast.js';
+import { prepareCompanyLayout } from '../../utils/company-layout.js';
 
 export async function companyReportsPage(app) {
   const ctx = await guardCompany();
@@ -17,11 +18,7 @@ export async function companyReportsPage(app) {
 
   app.innerHTML = `
     <div class="app-layout">
-      ${renderSidebar('/reports', 'company', {
-        companyName: context.company.name,
-        planName: context.plan?.name || '—',
-        isImpersonating: context.isImpersonating,
-      })}
+      ${renderSidebar('/dashboard', 'company', await prepareCompanyLayout(context))}
       <div class="main-content">
         ${renderTopbar(profile, 'Rapports', {
           isImpersonating: context.isImpersonating,

@@ -233,6 +233,20 @@ function openCompanyForm(company = null) {
 
     if (error) { toast(error.message, 'error'); return; }
     toast(isEdit ? 'Entreprise modifiée' : 'Entreprise créée', 'success');
+    await logAction({
+        action: 'company.create',
+        entity_type: 'companies',
+        entity_id: newCompany.id,
+        new_values: payload,
+    });
+
+    await logAction({
+        action: 'company.update',
+        entity_type: 'companies',
+        entity_id: c.id,
+        old_values: c,
+        new_values: payload,
+    });
     close();
     loadCompanies();
   });

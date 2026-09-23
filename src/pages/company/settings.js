@@ -2,6 +2,7 @@ import { supabase } from '../../config/supabase.js';
 import { requireCompany as guardCompany } from '../../utils/guards.js';
 import { renderSidebar } from '../../components/sidebar.js';
 import { renderTopbar, attachTopbarEvents } from '../../components/topbar.js';
+import { prepareCompanyLayout } from '../../utils/company-layout.js';
 import { toast } from '../../components/toast.js';
 
 export async function companySettingsPage(app) {
@@ -12,11 +13,7 @@ export async function companySettingsPage(app) {
 
   app.innerHTML = `
     <div class="app-layout">
-      ${renderSidebar('/settings', 'company', {
-  companyName: context.company.name,
-  planName: context.plan?.name || 'Aucun plan',
-  isImpersonating: context.isImpersonating,
-})}
+     ${renderSidebar('/dashboard', 'company', await prepareCompanyLayout(context))}
       <div class="main-content">
         ${renderTopbar(profile, 'Paramètres entreprise',{
   isImpersonating: context.isImpersonating,

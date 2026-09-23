@@ -73,27 +73,27 @@ export function clearCompanyContext() {
   cachedContext = null;
 }
 
-export async function checkPlanLimit(resource) {
-  const ctx = await getCompanyContext();
-  if (!ctx) return { allowed: false, reason: 'no_company' };
+// export async function checkPlanLimit(resource) {
+//   const ctx = await getCompanyContext();
+//   if (!ctx) return { allowed: false, reason: 'no_company' };
 
-  const plan = ctx.plan;
-  if (!plan) return { allowed: true }; // pas d'abonnement → on laisse passer
+//   const plan = ctx.plan;
+//   if (!plan) return { allowed: true }; // pas d'abonnement → on laisse passer
 
-  if (resource === 'employees') {
-    const { count } = await supabase.from('employees')
-      .select('*', { count: 'exact', head: true })
-      .eq('company_id', ctx.companyId);
-    return { allowed: count < plan.max_employees, current: count, max: plan.max_employees };
-  }
-  if (resource === 'sites') {
-    const { count } = await supabase.from('sites')
-      .select('*', { count: 'exact', head: true })
-      .eq('company_id', ctx.companyId);
-    return { allowed: count < plan.max_sites, current: count, max: plan.max_sites };
-  }
-  return { allowed: true };
-}
+//   if (resource === 'employees') {
+//     const { count } = await supabase.from('employees')
+//       .select('*', { count: 'exact', head: true })
+//       .eq('company_id', ctx.companyId);
+//     return { allowed: count < plan.max_employees, current: count, max: plan.max_employees };
+//   }
+//   if (resource === 'sites') {
+//     const { count } = await supabase.from('sites')
+//       .select('*', { count: 'exact', head: true })
+//       .eq('company_id', ctx.companyId);
+//     return { allowed: count < plan.max_sites, current: count, max: plan.max_sites };
+//   }
+//   return { allowed: true };
+// }
 
 
 // ... reste du fichier ...
@@ -112,4 +112,80 @@ export function getImpersonate() {
 
 export function isImpersonating() {
   return !!getImpersonate();
+}
+
+// Ajoute à la fin du fichier
+
+let featuresCache = null;
+let subscriptionCache = null;
+
+export async function getMyFeatures() {
+  if (featuresCache) return featuresCache;
+
+  const { data, error } = await supabase.rpc('my_features');
+  if (error) {
+    console.warn('my_features error:', error);
+    featuresCache = [];
+    return [];
+  }
+  featuresCache = data || [];
+  return featuresCache;
+}
+
+export async function hasFeature(key) {
+  const features = await getMyFeatures();
+  return features.includes(key);
+}
+
+export function clearFeaturesCache() {
+  featuresCache = null;
+  subscriptionCache = null;
+}
+
+/**
+ * Vérifie les limites du plan actuel
+ * @returns { plan, current, max, allowed, reason }
+ */
+export async function checkLimit(resource) {
+  const ctx = await getCompanyContext();
+  if (!ctx) return { allowed: false, reason: 'no_company' };
+
+  const plan = ctx.plan;
+  if (!plan) return { allowed: true };
+
+  if (resource === 'employees') {
+    const { count } = await supabase.from('employees')
+      .select('*', { count: 'exact', head: true })
+      .eq('company_id', ctx.companyId);
+    return {
+      allowed: count < plan.max_employees,
+      current: count,
+      max: plan.max_employees,
+      remaining: Math.max(0, plan.max_employees - count),
+    };
+  }
+  if (resource === 'sites') {
+    const { count } = await supabase.from('sites')
+      .select('*', { count: 'exact', head: true })
+      .eq('company_id', ctx.companyId);
+    return {
+      allowed: count < plan.max_sites,
+      current: count,
+      max: plan.max_sites,
+      remaining: Math.max(0, plan.max_sites - count),
+    };
+  }
+  if (resource === 'admins') {
+    const { count } = await supabase.from('company_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('company_id', ctx.companyId)
+      .in('role', ['company_owner', 'company_admin']);
+    return {
+      allowed: count < plan.max_admins,
+      current: count,
+      max: plan.max_admins,
+      remaining: Math.max(0, plan.max_admins - count),
+    };
+  }
+  return { allowed: true };
 }

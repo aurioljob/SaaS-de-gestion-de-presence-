@@ -4,6 +4,7 @@ import { renderSidebar } from '../../components/sidebar.js';
 import { renderTopbar, attachTopbarEvents } from '../../components/topbar.js';
 import { openModal, confirmModal } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
+import { prepareCompanyLayout } from '../../utils/company-layout.js';
 
 export async function companyDepartmentsPage(app) {
   const ctx = await guardCompany();
@@ -12,11 +13,7 @@ export async function companyDepartmentsPage(app) {
 
   app.innerHTML = `
     <div class="app-layout">
-      ${renderSidebar('/departments', 'company', {
-  companyName: context.company.name,
-  planName: context.plan?.name || 'Aucun plan',
-  isImpersonating: context.isImpersonating,
-})}
+      ${renderSidebar('/dashboard', 'company', await prepareCompanyLayout(context))}
       <div class="main-content">
         ${renderTopbar(profile, 'Départements',{
   isImpersonating: context.isImpersonating,

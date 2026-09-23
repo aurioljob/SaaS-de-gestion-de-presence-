@@ -6,6 +6,8 @@ import { openModal } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
 import { icon } from '../../components/icons.js';
 import { formatMoney, formatDate } from '../../utils/format.js';
+import { prepareCompanyLayout } from '../../utils/company-layout.js';
+import { clearFeaturesCache, getMyFeatures } from '../../utils/company.js';
 
 export async function companySubscriptionPage(app) {
   const ctx = await guardCompany();
@@ -24,14 +26,14 @@ export async function companySubscriptionPage(app) {
   const { data: payments } = await supabase.from('payments')
     .select('*').eq('company_id', context.companyId)
     .order('created_at', { ascending: false }).limit(20);
+    const features = await getMyFeatures();
+const planFeatures = await supabase
+  .from('features').select('*').in('key', features);
+const allFeatures = planFeatures.data || [];
 
   app.innerHTML = `
     <div class="app-layout">
-      ${renderSidebar('/subscription', 'company', {
-        companyName: context.company.name,
-        planName: sub?.plans?.name || '—',
-        isImpersonating: context.isImpersonating,
-      })}
+      ${renderSidebar('/dashboard', 'company', await prepareCompanyLayout(context))}
       <div class="main-content">
         ${renderTopbar(profile, 'Abonnement', {
           isImpersonating: context.isImpersonating,
@@ -83,6 +85,17 @@ export async function companySubscriptionPage(app) {
               </div>
             `).join('')}
           </div>
+          <div class="card" style="margin-bottom:24px;">
+            <div class="card-title">Vos fonctionnalités actuelles</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+                ${allFeatures.map(f => `
+                <div style="display:flex;align-items:center;gap:8px;font-size:14px;">
+                    <span style="color:var(--pf-success);">${icon('check',16)}</span>
+                    ${f.name}
+                </div>
+                `).join('')}
+            </div>
+            </div>
 
           ${payments && payments.length > 0 ? `
             <h2 style="margin:32px 0 16px;">Historique des paiements</h2>
@@ -268,6 +281,8 @@ async function openCheckout(planId, context, plans) {
     });
 
     toast('Paiement réussi ! Abonnement activé 🎉', 'success');
+    clearFeaturesCache();
+    location.reload();
     close();
     setTimeout(() => location.reload(), 900);
   });

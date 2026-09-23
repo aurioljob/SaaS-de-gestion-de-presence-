@@ -11,10 +11,11 @@ export function navigate(path, replace = false) {
 }
 
 function matchRoute(path) {
+  const normalizedPath = path.replace(/\/+$/, '') || '/';
   for (const r of routes) {
-    if (r.path === path) return { route: r, params: {} };
+    if (r.path === normalizedPath) return { route: r, params: {} };
     const rParts = r.path.split('/').filter(Boolean);
-    const pParts = path.split('/').filter(Boolean);
+    const pParts = normalizedPath.split('/').filter(Boolean);
     if (rParts.length !== pParts.length) continue;
     const params = {};
     let ok = true;
@@ -32,7 +33,13 @@ export async function resolve() {
   const match = matchRoute(path);
   const app = document.getElementById('app');
   if (!match) {
-    app.innerHTML = `<div class="empty"><h3>404</h3><p>${path}</p></div>`;
+    app.innerHTML = `
+      <div class="empty">
+        <h3>Page introuvable</h3>
+        <p>La route <strong>${path}</strong> n'existe pas dans l'application.</p>
+        <a href="/login" data-link class="btn btn-primary" style="margin-top:16px;">Retour à la connexion</a>
+      </div>
+    `;
     return;
   }
 

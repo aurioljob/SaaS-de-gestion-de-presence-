@@ -44,22 +44,32 @@ function renderAdminSidebar(active) {
 }
 
 function renderCompanySidebar(active, extras = {}) {
-  const links = [
+  const features = extras.features || [];
+
+  // Feature gating : chaque lien peut avoir une feature requise
+  const allLinks = [
     { section: 'Pilotage' },
     { href: '/dashboard', label: 'Dashboard', icon: 'layoutDashboard' },
-    { href: '/attendance', label: 'Présences', icon: 'clock2' },
-    { href: '/reports', label: 'Rapports', icon: 'trendingUp' },
+    { href: '/attendance', label: 'Présences', icon: 'clock2', feature: 'realtime' },
+    { href: '/reports', label: 'Rapports', icon: 'trendingUp', feature: 'reports_export' },
     { section: 'Organisation' },
     { href: '/employees', label: 'Employés', icon: 'userCheck' },
     { href: '/departments', label: 'Départements', icon: 'tag' },
-    { href: '/sites', label: 'Sites', icon: 'mapPin' },
+    { href: '/sites', label: 'Sites', icon: 'mapPin', feature: 'multi_sites' },
     { href: '/schedules', label: 'Horaires', icon: 'clock' },
-    { href: '/qr-codes', label: 'QR codes', icon: 'qrCode' },
+    { href: '/qr-codes', label: 'QR codes', icon: 'qrCode', feature: 'qr_checkin' },
     { section: 'Compte' },
     { href: '/subscription', label: 'Abonnement', icon: 'creditCard' },
-    { href: '/notifications', label: 'Notifications', icon: 'bell' },
+    { href: '/notifications', label: 'Notifications', icon: 'bell', feature: 'notifications' },
     { href: '/settings', label: 'Paramètres', icon: 'settings' },
   ];
+
+  // Filtre selon les features
+  const links = allLinks.filter(l => {
+    if (l.section) return true;
+    if (!l.feature) return true;
+    return features.includes(l.feature);
+  });
 
   const companyName = extras.companyName || 'Mon entreprise';
   const planName = extras.planName || 'Aucun plan';

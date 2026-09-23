@@ -5,6 +5,7 @@ import { renderTopbar, attachTopbarEvents } from '../../components/topbar.js';
 import { openModal, confirmModal } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
 import { formatDate } from '../../utils/format.js';
+import { prepareCompanyLayout } from '../../utils/company-layout.js';
 
 export async function companyQrCodesPage(app) {
   const ctx = await guardCompany();
@@ -13,11 +14,7 @@ export async function companyQrCodesPage(app) {
 
   app.innerHTML = `
     <div class="app-layout">
-      ${renderSidebar('/qr-codes', 'company', {
-  companyName: context.company.name,
-  planName: context.plan?.name || 'Aucun plan',
-  isImpersonating: context.isImpersonating,
-})}
+      ${renderSidebar('/dashboard', 'company', await prepareCompanyLayout(context))}
       <div class="main-content">
         ${renderTopbar(profile, 'QR codes',{
   isImpersonating: context.isImpersonating,

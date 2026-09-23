@@ -1,10 +1,11 @@
 import { supabase } from '../../config/supabase.js';
 import { requireCompany as guardCompany } from '../../utils/guards.js';
-import { checkPlanLimit } from '../../utils/company.js';
+import { checkLimit } from '../../utils/company.js';
 import { renderSidebar } from '../../components/sidebar.js';
 import { renderTopbar, attachTopbarEvents } from '../../components/topbar.js';
 import { openModal, confirmModal } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
+import { prepareCompanyLayout } from '../../utils/company-layout.js';
 
 export async function companySitesPage(app) {
   const ctx = await guardCompany();
@@ -13,11 +14,7 @@ export async function companySitesPage(app) {
 
   app.innerHTML = `
     <div class="app-layout">
-      ${renderSidebar('/sites', 'company', {
-  companyName: context.company.name,
-  planName: context.plan?.name || 'Aucun plan',
-  isImpersonating: context.isImpersonating,
-})}
+     ${renderSidebar('/dashboard', 'company', await prepareCompanyLayout(context))}
       <div class="main-content">
         ${renderTopbar(profile, 'Sites',{
   isImpersonating: context.isImpersonating,
@@ -152,8 +149,11 @@ function openSiteForm(site, context) {
   document.querySelector('[data-cancel]').addEventListener('click', close);
   document.querySelector('[data-save]').addEventListener('click', async () => {
     if (!isEdit) {
-      const limit = await checkPlanLimit('sites');
-      if (!limit.allowed) { toast(`Limite atteinte : ${limit.current}/${limit.max} sites`, 'error'); return; }
+        const limit = await checkLimit('sites');
+        if (!limit.allowed) {
+            toast(`Limite atteinte : ${limit.current}/${limit.max} sites`, 'error');
+            return;
+        }
     }
 
     const payload = {

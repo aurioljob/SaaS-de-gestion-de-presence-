@@ -140,9 +140,15 @@ export async function employeeCheckInPage(app) {
 
     const token = qrToken.startsWith('pointify:') ? qrToken.slice(9) : qrToken;
 
-    const { data: qr } = await supabase
+    const { data: qr, error: qrError } = await supabase
       .from('qr_codes').select('site_id')
       .eq('token_hash', token).eq('is_active', true).maybeSingle();
+
+    if (qrError) {
+      console.error('Erreur de lecture du QR code', qrError);
+      toast('Erreur de configuration du QR : ' + qrError.message, 'error', 6000);
+      return;
+    }
 
     if (!qr) { toast('QR code inconnu ou expiré', 'error'); return; }
 

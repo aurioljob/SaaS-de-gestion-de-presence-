@@ -764,3 +764,28 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .landing-nav { background: rgba(17,26,46,0.85); }
   .pricing-card-featured { box-shadow: 0 12px 40px rgba(37,99,235,0.3); }
 }
+
+.feature-wall {
+  text-align: center;
+  padding: 80px 20px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+.feature-wall-icon {
+  width: 96px; height: 96px;
+  border-radius: 50%;
+  background: var(--pf-gradient);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 24px;
+}
+.feature-wall h2 {
+  font-family: var(--pf-font-display);
+  font-size: 1.6rem;
+  margin-bottom: 12px;
+}
+.feature-wall p {
+  color: var(--pf-text-muted);
+  margin-bottom: 8px;
+  font-size: 14px;
+}

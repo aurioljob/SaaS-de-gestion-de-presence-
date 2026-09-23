@@ -4,6 +4,7 @@ import { renderSidebar } from '../../components/sidebar.js';
 import { renderTopbar, attachTopbarEvents } from '../../components/topbar.js';
 import { openModal, confirmModal } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
+import { prepareCompanyLayout } from '../../utils/company-layout.js';
 
 const DAYS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
@@ -14,11 +15,7 @@ export async function companySchedulesPage(app) {
 
   app.innerHTML = `
     <div class="app-layout">
-      ${renderSidebar('/schedules', 'company', {
-  companyName: context.company.name,
-  planName: context.plan?.name || 'Aucun plan',
-  isImpersonating: context.isImpersonating,
-})}
+      ${renderSidebar('/dashboard', 'company', await prepareCompanyLayout(context))}
       <div class="main-content">
         ${renderTopbar(profile, 'Horaires',{
   isImpersonating: context.isImpersonating,

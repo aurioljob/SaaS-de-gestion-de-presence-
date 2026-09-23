@@ -4,6 +4,7 @@ import { renderSidebar } from '../../components/sidebar.js';
 import { renderTopbar, attachTopbarEvents } from '../../components/topbar.js';
 import { subscribeToAttendance, unsubscribe } from '../../utils/realtime.js';
 import { icon } from '../../components/icons.js';
+import { prepareCompanyLayout } from '../../utils/company-layout.js';
 
 let channel = null;
 
@@ -16,11 +17,7 @@ export async function companyAttendancePage(app) {
 
   app.innerHTML = `
     <div class="app-layout">
-      ${renderSidebar('/attendance', 'company', {
-        companyName: context.company.name,
-        planName: context.plan?.name || '—',
-        isImpersonating: context.isImpersonating,
-      })}
+      ${renderSidebar('/dashboard', 'company', await prepareCompanyLayout(context))}
       <div class="main-content">
         ${renderTopbar(profile, 'Présences', {
           isImpersonating: context.isImpersonating,

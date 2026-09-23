@@ -1,11 +1,13 @@
 import { supabase } from '../../config/supabase.js';
-import { checkPlanLimit } from '../../utils/company.js';
+import { checkLimit } from '../../utils/company.js';
 import { requireCompany as guardCompany } from '../../utils/guards.js';
 import { renderSidebar } from '../../components/sidebar.js';
 import { renderTopbar, attachTopbarEvents } from '../../components/topbar.js';
 import { openModal, confirmModal } from '../../components/modal.js';
 import { toast } from '../../components/toast.js';
 import { debounce } from '../../utils/format.js';
+import { prepareCompanyLayout } from '../../utils/company-layout.js';
+import { renderLimitBanner } from '../../components/upgrade.js';
 
 const initialState = { search: '', status: '', siteId: '' };
 let state = { ...initialState };
@@ -14,15 +16,12 @@ export async function companyEmployeesPage(app) {
   const ctx = await guardCompany();
   if (!ctx) return;
   const { profile, context } = ctx;
+  const limit = await checkLimit('employees');
   state = { ...initialState };
 
   app.innerHTML = `
     <div class="app-layout">
-      ${renderSidebar('/employees', 'company', {
-        companyName: context.company.name,
-        planName: context.plan?.name || 'Aucun plan',
-        isImpersonating: context.isImpersonating,
-      })}
+     ${renderSidebar('/dashboard', 'company', await prepareCompanyLayout(context))}
       <div class="main-content">
         ${renderTopbar(profile, 'Employés', {
           isImpersonating: context.isImpersonating,
@@ -49,7 +48,12 @@ export async function companyEmployeesPage(app) {
             <div class="toolbar-spacer"></div>
             <button class="btn btn-primary" id="new-emp">+ Ajouter un employé</button>
           </div>
-
+                ${renderLimitBanner({
+                resource: 'employees',
+                current: limit.current || 0,
+                max: limit.max || 0,
+                planName: context.plan?.name,
+                })}
           <div id="employees-list"></div>
         </main>
       </div>
@@ -274,11 +278,15 @@ async function openEmployeeForm(emp, context) {
   document.querySelector('[data-cancel]').addEventListener('click', close);
   document.querySelector('[data-save]').addEventListener('click', async () => {
     if (!isEdit) {
-      const limit = await checkPlanLimit('employees');
-      if (!limit.allowed) {
-        toast(`Limite atteinte : ${limit.current}/${limit.max} employés`, 'error');
-        return;
-      }
+  const limit = await checkLimit('employees');
+  if (!limit.allowed) {
+    toast(`Limite atteinte : ${limit.current}/${limit.max} employés. Passez à un plan supérieur.`, 'error', 5000);
+    // Optionnel : ouvrir la modale d'upgrade
+    if (confirm('Voulez-vous voir les plans disponibles ?')) {
+      window.location.href = '/subscription';
+    }
+    return;
+        }
     }
 
     const email = document.getElementById('e-email').value.trim().toLowerCase();

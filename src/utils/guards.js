@@ -22,7 +22,7 @@ export async function requireRole(allowedRoles = []) {
   return profile;
 }
 
-export async function requireCompany(allowedRoles = ['company_owner', 'company_admin', 'supervisor']) {
+export async function requireCompany(allowedRoles = ['company_owner', 'company_admin', 'supervisor'], requiredFeatures = []) {
   const session = await requireAuth();
   if (!session) return null;
 
@@ -31,7 +31,7 @@ export async function requireCompany(allowedRoles = ['company_owner', 'company_a
 
   if (!profile) { navigate('/login', true); return null; }
 
-  // Super admin : accès libre (avec ou sans impersonation)
+  // Super admin : accès libre
   if (profile.role === 'super_admin') {
     const context = await getCompanyContext();
     if (!context) { navigate('/admin/companies', true); return null; }
@@ -51,13 +51,42 @@ export async function requireCompany(allowedRoles = ['company_owner', 'company_a
         <div class="auth-card" style="text-align:center;">
           <h1 style="font-family:var(--pf-font-display);">Aucune entreprise</h1>
           <p style="color:var(--pf-text-muted);margin:12px 0 20px;">
-            Votre compte n'est rattaché à aucune entreprise. Contactez votre administrateur.
+            Votre compte n'est rattaché à aucune entreprise.
           </p>
-          <button class="btn btn-secondary" onclick="location.reload()">Recharger</button>
         </div>
       </div>
     `;
     return null;
+  }
+
+  // Vérification des features
+  if (requiredFeatures.length > 0) {
+    const { getMyFeatures } = await import('./company.js');
+    const features = await getMyFeatures();
+    const missing = requiredFeatures.filter(f => !features.includes(f));
+
+    if (missing.length > 0) {
+      const { renderFeatureWall } = await import('../components/upgrade.js');
+      const { renderSidebar } = await import('../components/sidebar.js');
+      const { renderTopbar } = await import('../components/topbar.js');
+      const { prepareCompanyLayout } = await import('./company-layout.js');
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="app-layout">
+          ${renderSidebar('/dashboard', 'company', await prepareCompanyLayout(context))}
+          <div class="main-content">
+            ${renderTopbar(profile, 'Fonctionnalité non disponible')}
+            <main class="page">
+              ${renderFeatureWall({
+                featureName: 'Fonctionnalité verrouillée',
+                requiredPlan: 'STARTER',
+              })}
+            </main>
+          </div>
+        </div>
+      `;
+      return null;
+    }
   }
 
   return { profile, context };

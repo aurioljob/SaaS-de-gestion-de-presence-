@@ -5,6 +5,7 @@ import { renderTopbar, attachTopbarEvents } from '../../components/topbar.js';
 import { subscribeToNotifications, unsubscribe } from '../../utils/realtime.js';
 import { formatDateTime } from '../../utils/format.js';
 import { icon } from '../../components/icons.js';
+import { prepareCompanyLayout } from '../../utils/company-layout.js';
 
 let channel = null;
 
@@ -15,11 +16,7 @@ export async function companyNotificationsPage(app) {
 
   app.innerHTML = `
     <div class="app-layout">
-      ${renderSidebar('/notifications', 'company', {
-        companyName: context.company.name,
-        planName: context.plan?.name || '—',
-        isImpersonating: context.isImpersonating,
-      })}
+      ${renderSidebar('/dashboard', 'company', await prepareCompanyLayout(context))}
       <div class="main-content">
         ${renderTopbar(profile, 'Notifications', {
           isImpersonating: context.isImpersonating,
