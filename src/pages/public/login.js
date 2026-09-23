@@ -44,28 +44,57 @@ export async function loginPage(app) {
       return;
     }
 
-    toast('Connexion réussie', 'success');
-
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles').select('role').eq('id', data.user.id).single();
 
+    if (profileError || !profile) {
+      console.error('Profil introuvable après connexion', profileError);
+      toast('Connexion réussie, mais votre profil est introuvable.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Se connecter';
+      return;
+    }
+
+    toast('Connexion réussie', 'success');
+
     const role = profile?.role;
-    if (role === 'company_owner' || role === 'company_admin') {
-  // Vérifie si onboarding est nécessaire
-  const { data: members } = await supabase
-    .from('company_members').select('company_id')
-    .eq('user_id', data.user.id).eq('status', 'active').limit(1);
+    if (role === 'super_admin') {
+      navigate('/admin');
+      return;
+    }
 
-  if (members && members[0]) {
-    const { count } = await supabase
-      .from('sites').select('*', { count: 'exact', head: true })
-      .eq('company_id', members[0].company_id);
+    if (role === 'employee') {
+      navigate('/my-dashboard');
+      return;
+    }
 
-    if (count === 0) navigate('/onboarding');
-    else navigate('/dashboard');
-  } else {
-    navigate('/onboarding');
-  }
-}
+    if (['company_owner', 'company_admin', 'supervisor'].includes(role)) {
+      const { data: members, error: membersError } = await supabase
+        .from('company_members').select('company_id')
+        .eq('user_id', data.user.id).eq('status', 'active').limit(1);
+
+      if (membersError) {
+        toast('Impossible de vérifier votre entreprise.', 'error');
+        return;
+      }
+
+      if (members?.[0]) {
+        const { count, error: sitesError } = await supabase
+          .from('sites').select('*', { count: 'exact', head: true })
+          .eq('company_id', members[0].company_id);
+
+        if (sitesError) {
+          toast('Impossible de vérifier votre entreprise.', 'error');
+          return;
+        }
+
+        navigate(count === 0 ? '/onboarding' : '/dashboard');
+      } else {
+        navigate('/onboarding');
+      }
+      return;
+    }
+
+    toast(`Rôle utilisateur non reconnu : ${role || 'aucun'}`, 'error');
   });
 }
